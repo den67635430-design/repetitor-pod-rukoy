@@ -70,13 +70,7 @@ const Home: React.FC<Props> = ({ user, sub, testMode, isAdmin, onNavigate, onSel
         <MenuButton 
           title="Дошкольники" 
           emoji="👶" 
-          onClick={() => {
-            if (isPreschool) {
-               onNavigate('subjects');
-            } else {
-               alert("Вы выбрали режим школьника при регистрации. Хотите сменить на дошкольника?");
-            }
-          }} 
+          onClick={() => onNavigate('preschool')} 
           color="bg-sky-50 text-sky-700 border-sky-100"
         />
         <MenuButton 

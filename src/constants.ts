@@ -23,9 +23,11 @@ export const EXAMS = [
 ];
 
 export const PRESCHOOL_SECTIONS = [
-  { id: 'ps_russian', name: 'Русский (буквы/звуки)', emoji: '🅰️' },
-  { id: 'ps_math', name: 'Математика (счёт)', emoji: '🔢' },
-  { id: 'ps_game', name: 'Игра-тренажёр', emoji: '🎮' },
+  { id: 'ps_math', name: 'Математика (счёт и цифры)', emoji: '🔢' },
+  { id: 'ps_russian', name: 'Русский язык (буквы и звуки)', emoji: '🅰️' },
+  { id: 'ps_literature', name: 'Литература (сказки и стихи)', emoji: '📖' },
+  { id: 'ps_reading', name: 'Учимся читать', emoji: '📕' },
+  { id: 'ps_writing', name: 'Учимся писать', emoji: '✏️' },
 ];
 
 export const LEARNING_MODES = [
