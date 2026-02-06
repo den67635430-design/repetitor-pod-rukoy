@@ -4,10 +4,13 @@ import { LEARNING_MODES } from '../constants';
 import { streamChat } from '../services/chatService';
 import { useSpeechRecognition } from '../hooks/useSpeechRecognition';
 import { useSpeechSynthesis } from '../hooks/useSpeechSynthesis';
+import { useChatHistory, ChatSession } from '../hooks/useChatHistory';
+import { supabase } from '@/integrations/supabase/client';
 import ChatHeader from './chat/ChatHeader';
 import ChatMessages from './chat/ChatMessages';
 import ChatInput from './chat/ChatInput';
 import ModeSelector from './chat/ModeSelector';
+import ChatHistory from './chat/ChatHistory';
 
 interface Props {
   user: UserProfile;
@@ -22,12 +25,20 @@ const AIChat: React.FC<Props> = ({ user, subject, mode, onBack }) => {
   const [isTyping, setIsTyping] = useState(false);
   const [selectedMode, setSelectedMode] = useState(mode);
   const [showModes, setShowModes] = useState(true);
+  const [showHistory, setShowHistory] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+  const [attachedImage, setAttachedImage] = useState<{ file: File; preview: string } | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const isPreschool = user.type === 'PRESCHOOLER';
   const { speak, stop: stopSpeaking } = useSpeechSynthesis();
   const { isListening, transcript, startListening, stopListening, isSupported: micSupported } = useSpeechRecognition();
+  const {
+    sessions, loading: historyLoading, searchQuery, setSearchQuery,
+    fetchSessions, searchSessions, createSession, saveMessage, loadSessionMessages,
+  } = useChatHistory(user.id);
 
   // Auto-scroll on new messages
   useEffect(() => {
@@ -43,35 +54,67 @@ const AIChat: React.FC<Props> = ({ user, subject, mode, onBack }) => {
     }
   }, [transcript]);
 
+  const uploadImage = async (file: File): Promise<string | null> => {
+    const ext = file.name.split('.').pop();
+    const path = `${user.id}/${Date.now()}.${ext}`;
+    const { error } = await supabase.storage
+      .from('chat-attachments')
+      .upload(path, file);
+    if (error) return null;
+    const { data: urlData } = supabase.storage
+      .from('chat-attachments')
+      .getPublicUrl(path);
+    return urlData.publicUrl;
+  };
+
   const handleSend = async () => {
     const textToSend = input.trim();
-    if (!textToSend || isTyping) return;
+    if (!textToSend && !attachedImage) return;
+    if (isTyping) return;
 
-    // Stop listening if active
     if (isListening) stopListening();
     setError(null);
 
+    // Upload image if attached
+    let imageUrl: string | undefined;
+    if (attachedImage) {
+      imageUrl = (await uploadImage(attachedImage.file)) || undefined;
+      setAttachedImage(null);
+    }
+
     const userMessage: ChatMessage = {
       role: 'user',
-      text: textToSend,
+      text: textToSend || (imageUrl ? '📎 Изображение' : ''),
       timestamp: new Date().toISOString(),
+      imageUrl,
     };
 
     setMessages(prev => [...prev, userMessage]);
     setInput('');
     setIsTyping(true);
 
+    // Create session if needed
+    let sessionId = currentSessionId;
+    if (!sessionId) {
+      sessionId = await createSession(subject, selectedMode);
+      setCurrentSessionId(sessionId);
+    }
+
+    // Save user message
+    if (sessionId) {
+      await saveMessage(sessionId, userMessage, imageUrl);
+    }
+
     const apiMessages = [
       ...messages.map(m => ({
         role: m.role === 'model' ? ('assistant' as const) : ('user' as const),
         content: m.text,
       })),
-      { role: 'user' as const, content: textToSend },
+      { role: 'user' as const, content: textToSend || 'Посмотри на прикреплённое изображение' },
     ];
 
     let currentAiResponse = '';
 
-    // Placeholder AI message
     setMessages(prev => [...prev, { role: 'model', text: '', timestamp: new Date().toISOString() }]);
 
     await streamChat({
@@ -97,6 +140,11 @@ const AIChat: React.FC<Props> = ({ user, subject, mode, onBack }) => {
         if (isPreschool && currentAiResponse) {
           speak(currentAiResponse);
         }
+        // Save AI message
+        if (sessionId && currentAiResponse) {
+          const aiMsg: ChatMessage = { role: 'model', text: currentAiResponse, timestamp: new Date().toISOString() };
+          saveMessage(sessionId, aiMsg);
+        }
       },
       onError: (errMsg) => {
         setError(errMsg);
@@ -120,16 +168,65 @@ const AIChat: React.FC<Props> = ({ user, subject, mode, onBack }) => {
   };
 
   const handleMicToggle = () => {
-    if (isListening) {
-      stopListening();
-    } else {
-      startListening();
-    }
+    if (isListening) stopListening();
+    else startListening();
   };
 
   const handleSpeakMessage = (text: string) => {
     speak(text);
   };
+
+  const handleAttachFile = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      setError('Можно прикрепить только изображения');
+      return;
+    }
+    const preview = URL.createObjectURL(file);
+    setAttachedImage({ file, preview });
+    e.target.value = '';
+  };
+
+  const handleShowHistory = () => {
+    fetchSessions();
+    setShowHistory(true);
+  };
+
+  const handleSelectSession = async (session: ChatSession) => {
+    const msgs = await loadSessionMessages(session.id);
+    setMessages(msgs);
+    setCurrentSessionId(session.id);
+    setSelectedMode(session.mode);
+    setShowModes(false);
+    setShowHistory(false);
+  };
+
+  const handleNewChat = () => {
+    setMessages([]);
+    setCurrentSessionId(null);
+    setShowModes(true);
+    setShowHistory(false);
+  };
+
+  if (showHistory) {
+    return (
+      <ChatHistory
+        sessions={sessions}
+        loading={historyLoading}
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        onSearch={searchSessions}
+        onSelectSession={handleSelectSession}
+        onNewChat={handleNewChat}
+        onBack={() => setShowHistory(false)}
+      />
+    );
+  }
 
   return (
     <div className="flex flex-col h-full bg-slate-50">
@@ -137,9 +234,10 @@ const AIChat: React.FC<Props> = ({ user, subject, mode, onBack }) => {
         subject={subject}
         selectedMode={selectedMode}
         onBack={() => { stopSpeaking(); onBack(); }}
+        onShowHistory={handleShowHistory}
       />
 
-      <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-3">
         {showModes && (
           <ModeSelector onSelect={startWithMode} />
         )}
@@ -154,16 +252,33 @@ const AIChat: React.FC<Props> = ({ user, subject, mode, onBack }) => {
       </div>
 
       {!showModes && (
-        <ChatInput
-          input={input}
-          setInput={setInput}
-          onSend={handleSend}
-          isTyping={isTyping}
-          isListening={isListening}
-          onMicToggle={handleMicToggle}
-          micSupported={micSupported}
-          isPreschool={isPreschool}
-        />
+        <>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleFileChange}
+          />
+          <ChatInput
+            input={input}
+            setInput={setInput}
+            onSend={handleSend}
+            isTyping={isTyping}
+            isListening={isListening}
+            onMicToggle={handleMicToggle}
+            micSupported={micSupported}
+            isPreschool={isPreschool}
+            onAttachFile={handleAttachFile}
+            attachedImage={attachedImage}
+            onRemoveAttachment={() => {
+              if (attachedImage) {
+                URL.revokeObjectURL(attachedImage.preview);
+                setAttachedImage(null);
+              }
+            }}
+          />
+        </>
       )}
     </div>
   );

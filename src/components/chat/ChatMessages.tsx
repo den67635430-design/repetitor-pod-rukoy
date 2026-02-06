@@ -1,45 +1,27 @@
 import React from 'react';
 import { ChatMessage } from '../../types';
 
-// Clean LaTeX, markdown artifacts and other formatting noise from AI responses
 function cleanDisplayText(text: string): string {
   return text
-    // Remove LaTeX display math: $$...$$
     .replace(/\$\$([\s\S]*?)\$\$/g, '$1')
-    // Remove LaTeX inline math: $...$
     .replace(/\$([^$]+?)\$/g, '$1')
-    // Remove \frac{a}{b} → a/b
     .replace(/\\frac\{([^}]*)\}\{([^}]*)\}/g, '$1/$2')
-    // Remove \cdot → ·
     .replace(/\\cdot/g, '·')
-    // Remove \times → ×
     .replace(/\\times/g, '×')
-    // Remove \sqrt{x} → √x
     .replace(/\\sqrt\{([^}]*)\}/g, '√$1')
-    // Remove \left and \right
     .replace(/\\left/g, '')
     .replace(/\\right/g, '')
-    // Remove remaining backslash commands like \text{}, \mathrm{}, etc.
     .replace(/\\(?:text|mathrm|mathbf|mathit|textbf)\{([^}]*)\}/g, '$1')
-    // Remove \pm → ±
     .replace(/\\pm/g, '±')
-    // Remove \geq → ≥, \leq → ≤, \neq → ≠
     .replace(/\\geq/g, '≥')
     .replace(/\\leq/g, '≤')
     .replace(/\\neq/g, '≠')
-    // Remove \infty → ∞
     .replace(/\\infty/g, '∞')
-    // Remove \pi → π
     .replace(/\\pi/g, 'π')
-    // Remove remaining single backslash before letters (e.g. \alpha → alpha)
     .replace(/\\([a-zA-Z]+)/g, '$1')
-    // Remove ** bold markers
     .replace(/\*\*(.*?)\*\*/g, '$1')
-    // Remove * italic markers  
     .replace(/\*(.*?)\*/g, '$1')
-    // Remove stray $ signs
     .replace(/\$/g, '')
-    // Clean up extra whitespace
     .replace(/  +/g, ' ')
     .trim();
 }
@@ -56,23 +38,24 @@ const ChatMessages: React.FC<Props> = ({ messages, isTyping, error, isPreschool,
   <>
     {messages.map((m, i) => (
       <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'} animate-slide-in`}>
-        <div className={`max-w-[85%] px-4 py-3 rounded-2xl shadow-sm ${
+        <div className={`max-w-[85%] px-4 py-3 ${
           m.role === 'user'
-            ? 'bg-blue-600 text-white rounded-tr-none'
-            : 'bg-white border border-slate-100 text-slate-800 rounded-tl-none'
+            ? 'bg-blue-600 text-white rounded-2xl rounded-tr-sm'
+            : 'bg-white text-slate-800 rounded-2xl rounded-tl-sm shadow-sm'
         }`}>
-          <p className="text-sm whitespace-pre-wrap">{m.role === 'model' ? cleanDisplayText(m.text) : m.text}</p>
+          {/* Image if attached */}
+          {m.imageUrl && (
+            <img src={m.imageUrl} alt="Прикреплено" className="max-w-full rounded-xl mb-2" />
+          )}
+          <p className="text-sm whitespace-pre-wrap leading-relaxed">{m.role === 'model' ? cleanDisplayText(m.text) : m.text}</p>
           <div className="flex items-center justify-between mt-1 gap-2">
             <span className="text-[10px] opacity-50">
               {new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
             </span>
-            {/* Speaker button for AI messages */}
             {m.role === 'model' && m.text && (
               <button
                 onClick={() => onSpeakMessage(m.text)}
-                className={`p-1 rounded-full transition-colors ${
-                  m.role === 'model' ? 'text-slate-400 hover:text-blue-600' : 'text-white/50 hover:text-white'
-                }`}
+                className="p-1 rounded-full transition-colors text-slate-400 hover:text-blue-600"
                 title="Озвучить"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -87,7 +70,7 @@ const ChatMessages: React.FC<Props> = ({ messages, isTyping, error, isPreschool,
 
     {isTyping && messages[messages.length - 1]?.text === '' && (
       <div className="flex justify-start animate-pulse">
-        <div className="bg-white border border-slate-100 px-4 py-3 rounded-2xl rounded-tl-none shadow-sm">
+        <div className="bg-white px-4 py-3 rounded-2xl rounded-tl-sm shadow-sm">
           <div className="flex gap-1">
             <div className="w-1.5 h-1.5 bg-slate-300 rounded-full animate-bounce"></div>
             <div className="w-1.5 h-1.5 bg-slate-300 rounded-full animate-bounce [animation-delay:-0.15s]"></div>

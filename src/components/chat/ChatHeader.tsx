@@ -5,9 +5,10 @@ interface Props {
   subject: string;
   selectedMode: string;
   onBack: () => void;
+  onShowHistory?: () => void;
 }
 
-const ChatHeader: React.FC<Props> = ({ subject, selectedMode, onBack }) => (
+const ChatHeader: React.FC<Props> = ({ subject, selectedMode, onBack, onShowHistory }) => (
   <div className="bg-white border-b p-4 flex items-center justify-between shadow-sm z-20">
     <div className="flex items-center gap-3">
       <button onClick={onBack} className="p-2 hover:bg-slate-100 rounded-lg">
@@ -23,6 +24,17 @@ const ChatHeader: React.FC<Props> = ({ subject, selectedMode, onBack }) => (
       </div>
     </div>
     <div className="flex items-center gap-2">
+      {onShowHistory && (
+        <button
+          onClick={onShowHistory}
+          className="p-2 hover:bg-slate-100 rounded-lg"
+          title="История чатов"
+        >
+          <svg className="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </button>
+      )}
       <div className="bg-purple-100 text-purple-700 px-2 py-1 rounded text-[10px] font-bold">AI</div>
       <div className="bg-emerald-100 text-emerald-700 px-2 py-1 rounded text-[10px] font-bold">LIVE</div>
     </div>

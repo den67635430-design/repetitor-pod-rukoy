@@ -11,41 +11,120 @@ const GAME_TYPES = [
   { id: 'color', name: 'Сопоставь цвета', icon: '🎨' },
 ];
 
+const RUSSIAN_LETTERS = 'АБВГДЕЖЗИКЛМНОПРСТУФХЦЧШЩЭЮЯ'.split('');
+const COLORS = [
+  { name: 'Красный', emoji: '🔴', color: 'bg-red-500' },
+  { name: 'Синий', emoji: '🔵', color: 'bg-blue-500' },
+  { name: 'Зелёный', emoji: '🟢', color: 'bg-green-500' },
+  { name: 'Жёлтый', emoji: '🟡', color: 'bg-yellow-400' },
+  { name: 'Оранжевый', emoji: '🟠', color: 'bg-orange-500' },
+  { name: 'Фиолетовый', emoji: '🟣', color: 'bg-purple-500' },
+];
+const FRUIT_EMOJIS = ['🍎', '🍊', '🍋', '🍇', '🍓', '🍒', '🍑', '🥝'];
+
 interface AnswerFeedback {
-  selected: number;
+  selected: number | string;
   correct: boolean;
 }
 
+type GameQuestion = {
+  text: string;
+  visual: React.ReactNode;
+  options: (number | string)[];
+  answer: number | string;
+};
+
 const GameTrainer: React.FC<Props> = ({ onBack }) => {
   const [gameState, setGameState] = useState<'selection' | 'playing' | 'results'>('selection');
+  const [selectedGame, setSelectedGame] = useState<string>('count');
   const [score, setScore] = useState(0);
   const [currentRound, setCurrentRound] = useState(1);
-  const [question, setQuestion] = useState<{ text: string; options: number[]; answer: number } | null>(null);
+  const [question, setQuestion] = useState<GameQuestion | null>(null);
   const [feedback, setFeedback] = useState<AnswerFeedback | null>(null);
   const { speak } = useSpeechSynthesis();
 
-  const generateQuestion = () => {
+  const generateCountQuestion = (): GameQuestion => {
     const num = Math.floor(Math.random() * 5) + 1;
+    const emoji = FRUIT_EMOJIS[Math.floor(Math.random() * FRUIT_EMOJIS.length)];
     const optionsSet = new Set<number>([num]);
     while (optionsSet.size < 4) {
       const opt = Math.floor(Math.random() * 7) + 1;
       if (opt > 0) optionsSet.add(opt);
     }
     const options = Array.from(optionsSet).sort(() => Math.random() - 0.5);
-    setQuestion({ text: 'Сколько яблок ты видишь?', options, answer: num });
-    setFeedback(null);
-    speak(`Сколько яблок ты видишь?`);
+    return {
+      text: `Сколько ${emoji} ты видишь?`,
+      visual: <div className="text-6xl tracking-widest">{Array(num).fill(emoji).join(' ')}</div>,
+      options,
+      answer: num,
+    };
   };
 
-  const startGame = () => {
+  const generateLetterQuestion = (): GameQuestion => {
+    const targetIdx = Math.floor(Math.random() * RUSSIAN_LETTERS.length);
+    const targetLetter = RUSSIAN_LETTERS[targetIdx];
+    const optionsSet = new Set<string>([targetLetter]);
+    while (optionsSet.size < 4) {
+      const randLetter = RUSSIAN_LETTERS[Math.floor(Math.random() * RUSSIAN_LETTERS.length)];
+      optionsSet.add(randLetter);
+    }
+    const options = Array.from(optionsSet).sort(() => Math.random() - 0.5);
+    return {
+      text: `Найди букву "${targetLetter}"`,
+      visual: (
+        <div className="text-8xl font-extrabold text-sky-600">{targetLetter}</div>
+      ),
+      options,
+      answer: targetLetter,
+    };
+  };
+
+  const generateColorQuestion = (): GameQuestion => {
+    const targetIdx = Math.floor(Math.random() * COLORS.length);
+    const targetColor = COLORS[targetIdx];
+    const optionsSet = new Set<string>([targetColor.name]);
+    while (optionsSet.size < 4) {
+      const randColor = COLORS[Math.floor(Math.random() * COLORS.length)];
+      optionsSet.add(randColor.name);
+    }
+    const options = Array.from(optionsSet).sort(() => Math.random() - 0.5);
+    return {
+      text: `Какой это цвет?`,
+      visual: (
+        <div className={`w-24 h-24 rounded-full mx-auto ${targetColor.color} shadow-lg`} />
+      ),
+      options,
+      answer: targetColor.name,
+    };
+  };
+
+  const generateQuestion = (gameType: string) => {
+    let q: GameQuestion;
+    switch (gameType) {
+      case 'letter':
+        q = generateLetterQuestion();
+        break;
+      case 'color':
+        q = generateColorQuestion();
+        break;
+      default:
+        q = generateCountQuestion();
+    }
+    setQuestion(q);
+    setFeedback(null);
+    speak(q.text);
+  };
+
+  const startGame = (gameId: string) => {
+    setSelectedGame(gameId);
     setScore(0);
     setCurrentRound(1);
     setGameState('playing');
-    setTimeout(() => generateQuestion(), 100);
+    setTimeout(() => generateQuestion(gameId), 100);
   };
 
-  const handleAnswer = (val: number) => {
-    if (feedback) return; // prevent double-tap
+  const handleAnswer = (val: number | string) => {
+    if (feedback) return;
 
     const correct = val === question?.answer;
     setFeedback({ selected: val, correct });
@@ -57,11 +136,10 @@ const GameTrainer: React.FC<Props> = ({ onBack }) => {
       speak(`Неправильно. Правильный ответ: ${question?.answer}`);
     }
 
-    // Move to next round after delay
     setTimeout(() => {
       if (currentRound < 5) {
         setCurrentRound(r => r + 1);
-        generateQuestion();
+        generateQuestion(selectedGame);
       } else {
         setGameState('results');
         const finalScore = correct ? score + 1 : score;
@@ -70,7 +148,7 @@ const GameTrainer: React.FC<Props> = ({ onBack }) => {
     }, 1500);
   };
 
-  const getOptionStyle = (opt: number) => {
+  const getOptionStyle = (opt: number | string) => {
     if (!feedback) {
       return 'bg-white text-sky-600 border-b-8 border-slate-200 hover:bg-sky-100 active:scale-90 active:border-b-0';
     }
@@ -104,7 +182,7 @@ const GameTrainer: React.FC<Props> = ({ onBack }) => {
             {GAME_TYPES.map(g => (
               <button
                 key={g.id}
-                onClick={startGame}
+                onClick={() => startGame(g.id)}
                 className="w-full bg-white p-6 rounded-3xl shadow-md border-2 border-transparent active:border-sky-400 flex items-center gap-6 group transition-all"
               >
                 <span className="text-5xl group-hover:scale-110 transition-transform">{g.icon}</span>
@@ -122,13 +200,10 @@ const GameTrainer: React.FC<Props> = ({ onBack }) => {
             </div>
 
             <div className="bg-white p-8 rounded-[40px] shadow-xl text-center space-y-6">
-              <div className="text-6xl tracking-widest">
-                {Array(question.answer).fill('🍎').join(' ')}
-              </div>
+              {question.visual}
               <h4 className="text-2xl font-bold text-slate-800">{question.text}</h4>
             </div>
 
-            {/* Feedback banner */}
             {feedback && (
               <div className={`text-center py-3 rounded-2xl font-bold text-lg animate-slide-in ${
                 feedback.correct
@@ -140,12 +215,12 @@ const GameTrainer: React.FC<Props> = ({ onBack }) => {
             )}
 
             <div className="grid grid-cols-2 gap-4">
-              {question.options.map(opt => (
+              {question.options.map((opt, idx) => (
                 <button
-                  key={opt}
+                  key={`${opt}-${idx}`}
                   onClick={() => handleAnswer(opt)}
                   disabled={!!feedback}
-                  className={`p-8 rounded-[32px] shadow-lg text-4xl font-extrabold transition-all ${getOptionStyle(opt)}`}
+                  className={`p-8 rounded-[32px] shadow-lg text-3xl font-extrabold transition-all ${getOptionStyle(opt)}`}
                 >
                   {opt}
                 </button>

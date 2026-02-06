@@ -80,6 +80,15 @@ const Home: React.FC<Props> = ({ user, sub, appState, onNavigate, onSelectSubjec
           color="bg-sky-50 text-sky-700 border-sky-100"
         />
         <MenuButton 
+          title="ВПР" 
+          emoji="📋" 
+          onClick={() => {
+            onSelectSubject('ВПР (Всероссийские проверочные работы)');
+            onNavigate('chat');
+          }} 
+          color="bg-teal-50 text-teal-700 border-teal-100"
+        />
+        <MenuButton 
           title="Игра-тренажёр" 
           emoji="🎮" 
           onClick={() => onNavigate('game')} 
