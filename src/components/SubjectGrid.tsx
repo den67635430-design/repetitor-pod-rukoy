@@ -1,15 +1,17 @@
 
 import React from 'react';
-import { SUBJECTS, EXAMS } from '../constants';
+import { SUBJECTS, EXAMS, PRESCHOOL_SECTIONS } from '../constants';
 
 interface Props {
   isExam?: boolean;
+  isPreschool?: boolean;
   onBack: () => void;
   onSelect: (id: string) => void;
 }
 
-const SubjectGrid: React.FC<Props> = ({ isExam, onBack, onSelect }) => {
-  const items = isExam ? EXAMS : SUBJECTS;
+const SubjectGrid: React.FC<Props> = ({ isExam, isPreschool, onBack, onSelect }) => {
+  const items = isPreschool ? PRESCHOOL_SECTIONS : isExam ? EXAMS : SUBJECTS;
+  const title = isPreschool ? 'Программа дошкольника' : isExam ? 'Подготовка к экзаменам' : 'Выберите предмет';
 
   return (
     <div className="p-5 animate-slide-in space-y-6">
@@ -17,9 +19,7 @@ const SubjectGrid: React.FC<Props> = ({ isExam, onBack, onSelect }) => {
         <button onClick={onBack} className="p-2 bg-white rounded-xl shadow-sm border text-slate-600">
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7"/></svg>
         </button>
-        <h2 className="text-2xl font-extrabold text-slate-900">
-          {isExam ? 'Подготовка к экзаменам' : 'Выберите предмет'}
-        </h2>
+        <h2 className="text-2xl font-extrabold text-slate-900">{title}</h2>
       </div>
 
       <div className="grid grid-cols-2 gap-4">

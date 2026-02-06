@@ -13,7 +13,7 @@ import GameTrainer from './components/GameTrainer';
 import AdminDashboard from './components/AdminDashboard';
 import Profile from './components/Profile';
 
-type Screen = 'welcome' | 'auth' | 'setup' | 'home' | 'subjects' | 'chat' | 'game' | 'admin' | 'profile' | 'exams';
+type Screen = 'welcome' | 'auth' | 'setup' | 'home' | 'subjects' | 'preschool' | 'chat' | 'game' | 'admin' | 'profile' | 'exams';
 
 const App: React.FC = () => {
   const { user, profile, isAdmin, loading, signOut, hasProfile, refreshProfile } = useAuth();
@@ -149,6 +149,14 @@ const App: React.FC = () => {
         return (
           <SubjectGrid
             isExam
+            onBack={() => setCurrentScreen('home')}
+            onSelect={(id) => { setSelectedSubject(id); setCurrentScreen('chat'); }}
+          />
+        );
+      case 'preschool':
+        return (
+          <SubjectGrid
+            isPreschool
             onBack={() => setCurrentScreen('home')}
             onSelect={(id) => { setSelectedSubject(id); setCurrentScreen('chat'); }}
           />
