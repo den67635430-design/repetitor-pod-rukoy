@@ -19,6 +19,7 @@ export const SUBJECTS = [
 export const EXAMS = [
   { id: 'oge', name: 'ОГЭ (9 класс)', emoji: '📝' },
   { id: 'ege', name: 'ЕГЭ (11 класс)', emoji: '🎓' },
+  { id: 'vpr', name: 'ВПР (4-10 класс)', emoji: '📋' },
 ];
 
 export const PRESCHOOL_SECTIONS = [

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { SubscriptionStatus, SubscriptionInfo, AppState } from './types';
 import { useAuth } from './hooks/useAuth';
+import { useDeviceLimit } from './hooks/useDeviceLimit';
 import WelcomePage from './components/WelcomePage';
 import AuthPage from './components/AuthPage';
 import SetupProfile from './components/SetupProfile';
@@ -15,11 +16,13 @@ type Screen = 'welcome' | 'auth' | 'setup' | 'home' | 'subjects' | 'chat' | 'gam
 
 const App: React.FC = () => {
   const { user, profile, isAdmin, loading, signOut, hasProfile, refreshProfile } = useAuth();
+  const { checkAndRegisterDevice } = useDeviceLimit();
   const [sub, setSub] = useState<SubscriptionInfo>({ status: SubscriptionStatus.NONE });
   const [appState, setAppState] = useState<AppState>({ testMode: false });
   const [currentScreen, setCurrentScreen] = useState<Screen>('welcome');
   const [selectedSubject, setSelectedSubject] = useState<string | null>(null);
   const [selectedMode, setSelectedMode] = useState<string | null>(null);
+  const [deviceBlocked, setDeviceBlocked] = useState<string | null>(null);
 
 
   // Route user based on auth state
@@ -45,6 +48,17 @@ const App: React.FC = () => {
       setCurrentScreen('home');
     }
   }, [user, hasProfile, loading]);
+
+  // Device limit check
+  useEffect(() => {
+    if (user && hasProfile) {
+      checkAndRegisterDevice(user.id).then(result => {
+        if (!result.allowed) {
+          setDeviceBlocked(result.message || 'Превышен лимит устройств.');
+        }
+      });
+    }
+  }, [user, hasProfile]);
 
   // Test mode from Telegram
   useEffect(() => {
@@ -76,6 +90,24 @@ const App: React.FC = () => {
             <span className="text-3xl">📚</span>
           </div>
           <p className="text-slate-500 font-medium">Загрузка...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (deviceBlocked) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-slate-50 p-6">
+        <div className="text-center space-y-4 max-w-sm">
+          <div className="text-6xl">🔒</div>
+          <h2 className="text-xl font-bold text-slate-900">Лимит устройств</h2>
+          <p className="text-slate-600 text-sm">{deviceBlocked}</p>
+          <button
+            onClick={handleLogout}
+            className="w-full bg-blue-600 text-white py-3 rounded-2xl font-bold"
+          >
+            Выйти
+          </button>
         </div>
       </div>
     );

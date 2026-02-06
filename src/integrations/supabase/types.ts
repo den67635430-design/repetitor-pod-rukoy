@@ -14,6 +14,101 @@ export type Database = {
   }
   public: {
     Tables: {
+      chat_messages: {
+        Row: {
+          created_at: string
+          has_image: boolean | null
+          id: string
+          image_url: string | null
+          role: string
+          session_id: string
+          text: string
+        }
+        Insert: {
+          created_at?: string
+          has_image?: boolean | null
+          id?: string
+          image_url?: string | null
+          role: string
+          session_id: string
+          text: string
+        }
+        Update: {
+          created_at?: string
+          has_image?: boolean | null
+          id?: string
+          image_url?: string | null
+          role?: string
+          session_id?: string
+          text?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_messages_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "chat_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chat_sessions: {
+        Row: {
+          created_at: string
+          id: string
+          mode: string
+          subject: string
+          title: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          mode?: string
+          subject: string
+          title?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          mode?: string
+          subject?: string
+          title?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      device_sessions: {
+        Row: {
+          created_at: string
+          device_fingerprint: string
+          device_name: string | null
+          id: string
+          last_active_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          device_fingerprint: string
+          device_name?: string | null
+          id?: string
+          last_active_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          device_fingerprint?: string
+          device_name?: string | null
+          id?: string
+          last_active_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           class_level: number | null
