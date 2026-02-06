@@ -59,6 +59,35 @@ const PasswordInput = ({
   );
 };
 
+const translateSupabaseError = (message: string): string => {
+  if (message.includes('security purposes')) {
+    const seconds = message.match(/after (\d+) seconds/);
+    if (seconds) {
+      return `В целях безопасности повторите попытку через ${seconds[1]} сек.`;
+    }
+    return 'В целях безопасности подождите немного и повторите попытку.';
+  }
+  if (message.includes('rate limit') || message.includes('too many requests')) {
+    return 'Слишком много попыток. Подождите немного.';
+  }
+  if (message.includes('User already registered')) {
+    return 'Этот email уже зарегистрирован. Войдите в аккаунт.';
+  }
+  if (message.includes('Invalid login')) {
+    return 'Неверный email или пароль';
+  }
+  if (message.includes('Email not confirmed')) {
+    return 'Email не подтверждён. Проверьте почту или отправьте письмо повторно.';
+  }
+  if (message.includes('Signups not allowed')) {
+    return 'Регистрация временно недоступна.';
+  }
+  if (message.includes('Password should be')) {
+    return 'Пароль должен быть не менее 6 символов.';
+  }
+  return message;
+};
+
 const AuthPage: React.FC<Props> = ({ onBack }) => {
   const [mode, setMode] = useState<'login' | 'signup'>('signup');
   const [email, setEmail] = useState('');
@@ -93,7 +122,7 @@ const AuthPage: React.FC<Props> = ({ onBack }) => {
       });
 
       if (resendError) {
-        setError(resendError.message);
+        setError(translateSupabaseError(resendError.message));
       } else {
         setSuccessMsg('Письмо отправлено повторно! Проверьте почту.');
       }
@@ -143,7 +172,7 @@ const AuthPage: React.FC<Props> = ({ onBack }) => {
           if (signUpError.message.includes('already registered')) {
             setError('Этот email уже зарегистрирован. Войдите в аккаунт.');
           } else {
-            setError(signUpError.message);
+            setError(translateSupabaseError(signUpError.message));
           }
           return;
         }
@@ -157,13 +186,9 @@ const AuthPage: React.FC<Props> = ({ onBack }) => {
         });
 
         if (signInError) {
-          if (signInError.message.includes('Invalid login')) {
-            setError('Неверный email или пароль');
-          } else if (signInError.message.includes('Email not confirmed')) {
-            setError('Email не подтверждён. Проверьте почту или отправьте письмо повторно.');
+          setError(translateSupabaseError(signInError.message));
+          if (signInError.message.includes('Email not confirmed')) {
             setShowResend(true);
-          } else {
-            setError(signInError.message);
           }
           return;
         }
