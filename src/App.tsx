@@ -1,95 +1,146 @@
-
-import React, { useState, useEffect, useCallback } from 'react';
-import { 
-  UserProfile, UserRole, UserType, SubscriptionStatus, 
-  SubscriptionInfo, AppState, ChatMessage 
-} from './types';
-import { ADMIN_TG_ID } from './constants';
-import RegistrationForm from './components/RegistrationForm';
+import React, { useState, useEffect } from 'react';
+import { SubscriptionStatus, SubscriptionInfo, AppState } from './types';
+import { useAuth } from './hooks/useAuth';
+import WelcomePage from './components/WelcomePage';
+import AuthPage from './components/AuthPage';
+import SetupProfile from './components/SetupProfile';
 import Home from './components/Home';
 import SubjectGrid from './components/SubjectGrid';
 import AIChat from './components/AIChat';
 import GameTrainer from './components/GameTrainer';
 import AdminDashboard from './components/AdminDashboard';
 import Profile from './components/Profile';
-import { LegalModals } from './components/LegalModals';
+
+type Screen = 'welcome' | 'auth' | 'setup' | 'home' | 'subjects' | 'chat' | 'game' | 'admin' | 'profile' | 'exams';
 
 const App: React.FC = () => {
-  // Persistence states (Mocked for TMA)
-  const [user, setUser] = useState<UserProfile | null>(null);
+  const { user, profile, isAdmin, loading, signOut, hasProfile, refreshProfile } = useAuth();
   const [sub, setSub] = useState<SubscriptionInfo>({ status: SubscriptionStatus.NONE });
   const [appState, setAppState] = useState<AppState>({ testMode: false });
-  const [currentScreen, setCurrentScreen] = useState<'home' | 'subjects' | 'chat' | 'game' | 'admin' | 'profile' | 'exams'>('home');
+  const [currentScreen, setCurrentScreen] = useState<Screen>('welcome');
   const [selectedSubject, setSelectedSubject] = useState<string | null>(null);
   const [selectedMode, setSelectedMode] = useState<string | null>(null);
 
+  // Check for admin key in URL
   useEffect(() => {
-    // Initialize Telegram WebApp
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('admin_key') === 'reptutor2024') {
+      localStorage.setItem('admin_access', 'true');
+    }
+  }, []);
+
+  // Route user based on auth state
+  useEffect(() => {
+    if (loading) return;
+
+    if (!user) {
+      // Not logged in — show welcome or auth
+      if (currentScreen !== 'auth') {
+        setCurrentScreen('welcome');
+      }
+      return;
+    }
+
+    // Logged in but no profile — setup
+    if (!hasProfile) {
+      setCurrentScreen('setup');
+      return;
+    }
+
+    // Logged in with profile — go home (only if on welcome/auth/setup)
+    if (['welcome', 'auth', 'setup'].includes(currentScreen)) {
+      setCurrentScreen('home');
+    }
+  }, [user, hasProfile, loading]);
+
+  // Test mode from Telegram
+  useEffect(() => {
     const tg = (window as any).Telegram?.WebApp;
     if (tg) {
       tg.ready();
       tg.expand();
-      
-      const tgUser = tg.initDataUnsafe?.user;
-      if (tgUser && tgUser.id.toString() === ADMIN_TG_ID) {
-        // Handle admin detection logic if needed on load
-      }
-    }
-    
-    // Check local storage for user profile
-    const savedUser = localStorage.getItem('user_profile');
-    if (savedUser) {
-      setUser(JSON.parse(savedUser));
     }
   }, []);
 
-  const handleRegister = (profile: UserProfile) => {
-    setUser(profile);
-    localStorage.setItem('user_profile', JSON.stringify(profile));
-    setCurrentScreen('home');
-    
-    // If test mode is on, grant access immediately
-    if (appState.testMode) {
-      setSub({ status: SubscriptionStatus.TRIAL_ACTIVE });
-    }
-  };
-
   const handleToggleTestMode = () => {
-    setAppState(prev => ({ 
-      ...prev, 
-      testMode: !prev.testMode, 
-      lastTestBroadcastAt: !prev.testMode ? new Date().toISOString() : prev.lastTestBroadcastAt 
+    setAppState(prev => ({
+      ...prev,
+      testMode: !prev.testMode,
+      lastTestBroadcastAt: !prev.testMode ? new Date().toISOString() : prev.lastTestBroadcastAt,
     }));
   };
 
-  if (!user) {
+  const handleLogout = async () => {
+    await signOut();
+    setCurrentScreen('welcome');
+  };
+
+  if (loading) {
     return (
-      <div className="p-4 flex flex-col items-center justify-center min-height-screen animate-slide-in">
-        <RegistrationForm onRegister={handleRegister} />
-        <LegalModals />
+      <div className="flex items-center justify-center min-h-screen bg-slate-50">
+        <div className="text-center space-y-4">
+          <div className="w-16 h-16 bg-blue-100 rounded-2xl mx-auto flex items-center justify-center animate-pulse">
+            <span className="text-3xl">📚</span>
+          </div>
+          <p className="text-slate-500 font-medium">Загрузка...</p>
+        </div>
       </div>
     );
   }
 
-  const isAdmin = user.id.toString() === ADMIN_TG_ID;
+  // Welcome page (no auth)
+  if (currentScreen === 'welcome' && !user) {
+    return <WelcomePage onStart={() => setCurrentScreen('auth')} />;
+  }
+
+  // Auth page
+  if (currentScreen === 'auth' && !user) {
+    return <AuthPage onBack={() => setCurrentScreen('welcome')} />;
+  }
+
+  // Profile setup (after auth, before home)
+  if (currentScreen === 'setup' && user && !hasProfile) {
+    return (
+      <SetupProfile
+        userId={user.id}
+        onComplete={() => {
+          refreshProfile();
+        }}
+      />
+    );
+  }
+
+  // If user not logged in at this point, go to welcome
+  if (!user || !profile) {
+    return <WelcomePage onStart={() => setCurrentScreen('auth')} />;
+  }
+
+  // Build user-like object for components that need it
+  const userProfile = {
+    id: user.id,
+    name: profile.name,
+    type: profile.user_type as any,
+    classLevel: profile.class_level ?? undefined,
+    learningGoal: profile.learning_goal,
+  };
 
   const renderScreen = () => {
     switch (currentScreen) {
       case 'home':
         return (
-          <Home 
-            user={user} 
-            sub={sub} 
+          <Home
+            user={{ ...userProfile, role: 'USER' as any, registeredAt: '', consents: { privacyPolicy: true, termsOfUse: true, dataProcessing: true } }}
+            sub={sub}
             appState={appState}
-            onNavigate={setCurrentScreen} 
+            onNavigate={setCurrentScreen as any}
             onSelectSubject={setSelectedSubject}
             isAdmin={isAdmin}
           />
         );
       case 'subjects':
         return (
-          <SubjectGrid 
-            onBack={() => setCurrentScreen('home')} 
+          <SubjectGrid
+            onBack={() => setCurrentScreen('home')}
             onSelect={(id) => {
               setSelectedSubject(id);
               setCurrentScreen('chat');
@@ -98,9 +149,9 @@ const App: React.FC = () => {
         );
       case 'exams':
         return (
-          <SubjectGrid 
-            isExam 
-            onBack={() => setCurrentScreen('home')} 
+          <SubjectGrid
+            isExam
+            onBack={() => setCurrentScreen('home')}
             onSelect={(id) => {
               setSelectedSubject(id);
               setCurrentScreen('chat');
@@ -109,8 +160,8 @@ const App: React.FC = () => {
         );
       case 'chat':
         return (
-          <AIChat 
-            user={user}
+          <AIChat
+            user={{ ...userProfile, role: 'USER' as any, registeredAt: '', consents: { privacyPolicy: true, termsOfUse: true, dataProcessing: true } }}
             subject={selectedSubject || 'General'}
             mode={selectedMode || 'explain'}
             onBack={() => setCurrentScreen('home')}
@@ -120,26 +171,24 @@ const App: React.FC = () => {
         return <GameTrainer onBack={() => setCurrentScreen('home')} />;
       case 'admin':
         return (
-          <AdminDashboard 
+          <AdminDashboard
             appState={appState}
             onToggleTest={handleToggleTestMode}
-            onBack={() => setCurrentScreen('home')} 
+            onBack={() => setCurrentScreen('home')}
           />
         );
       case 'profile':
         return (
-          <Profile 
-            user={user} 
-            sub={sub} 
-            onBack={() => setCurrentScreen('home')} 
-            onLogout={() => {
-              localStorage.removeItem('user_profile');
-              setUser(null);
-            }}
+          <Profile
+            user={{ ...userProfile, role: 'USER' as any, registeredAt: '', consents: { privacyPolicy: true, termsOfUse: true, dataProcessing: true } }}
+            sub={sub}
+            onBack={() => setCurrentScreen('home')}
+            onLogout={handleLogout}
+            onUpdateProfile={refreshProfile}
           />
         );
       default:
-        return <Home user={user} sub={sub} appState={appState} onNavigate={setCurrentScreen} onSelectSubject={setSelectedSubject} isAdmin={isAdmin} />;
+        return null;
     }
   };
 
@@ -153,7 +202,9 @@ const App: React.FC = () => {
         </div>
         <div className="flex items-center gap-3">
           {appState.testMode && (
-            <span className="px-2 py-0.5 bg-amber-100 text-amber-700 text-[10px] font-bold rounded uppercase tracking-wider animate-pulse">🧪 Тестирование</span>
+            <span className="px-2 py-0.5 bg-amber-100 text-amber-700 text-[10px] font-bold rounded uppercase tracking-wider animate-pulse">
+              🧪 Тестирование
+            </span>
           )}
           <span className="text-xs font-medium px-2 py-1 bg-slate-100 rounded-full text-slate-500 border border-slate-200 uppercase">
             {sub.status.replace('_', ' ')}
@@ -162,51 +213,71 @@ const App: React.FC = () => {
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-y-auto scroll-smooth">
-        {renderScreen()}
-      </main>
+      <main className="flex-1 overflow-y-auto scroll-smooth">{renderScreen()}</main>
 
       {/* Navigation Footer */}
       <footer className="bg-white border-t px-4 py-2 flex justify-around items-center z-10">
-        {/* Главная */}
-        <button onClick={() => setCurrentScreen('home')} className={`flex flex-col items-center gap-0.5 p-1 rounded-xl transition-colors ${currentScreen === 'home' ? 'text-blue-600' : 'text-slate-400'}`}>
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
-          <span className="text-[9px] font-bold">Главная</span>
-        </button>
-
-        {/* Поддержка */}
-        <button onClick={() => { setSelectedSubject('Support'); setCurrentScreen('chat'); }} className={`flex flex-col items-center gap-0.5 p-1 rounded-xl transition-colors ${currentScreen === 'chat' && selectedSubject === 'Support' ? 'text-blue-600' : 'text-slate-400'}`}>
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/></svg>
-          <span className="text-[9px] font-bold">Помощь</span>
-        </button>
-
-        {/* Профиль */}
-        <button onClick={() => setCurrentScreen('profile')} className={`flex flex-col items-center gap-0.5 p-1 rounded-xl transition-colors ${currentScreen === 'profile' ? 'text-blue-600' : 'text-slate-400'}`}>
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
-          <span className="text-[9px] font-bold">Профиль</span>
-        </button>
-
-        {/* Тест — только для админа */}
+        <NavButton
+          icon={<path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />}
+          label="Главная"
+          active={currentScreen === 'home'}
+          onClick={() => setCurrentScreen('home')}
+        />
+        <NavButton
+          icon={<path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />}
+          label="Помощь"
+          active={currentScreen === 'chat' && selectedSubject === 'Support'}
+          onClick={() => {
+            setSelectedSubject('Support');
+            setCurrentScreen('chat');
+          }}
+        />
+        <NavButton
+          icon={<path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />}
+          label="Профиль"
+          active={currentScreen === 'profile'}
+          onClick={() => setCurrentScreen('profile')}
+        />
         {isAdmin && (
-          <button 
-            onClick={handleToggleTestMode} 
-            className={`flex flex-col items-center gap-0.5 p-1 rounded-xl transition-colors ${appState.testMode ? 'text-amber-500' : 'text-slate-400'}`}
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/></svg>
-            <span className="text-[9px] font-bold">{appState.testMode ? 'Тест ✓' : 'Тест'}</span>
-          </button>
+          <NavButton
+            icon={<path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />}
+            label={appState.testMode ? 'Тест ✓' : 'Тест'}
+            active={appState.testMode}
+            activeColor="text-amber-500"
+            onClick={handleToggleTestMode}
+          />
         )}
-
-        {/* Стат — только для админа */}
         {isAdmin && (
-          <button onClick={() => setCurrentScreen('admin')} className={`flex flex-col items-center gap-0.5 p-1 rounded-xl transition-colors ${currentScreen === 'admin' ? 'text-blue-600' : 'text-slate-400'}`}>
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
-            <span className="text-[9px] font-bold">Стат</span>
-          </button>
+          <NavButton
+            icon={<path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />}
+            label="Стат"
+            active={currentScreen === 'admin'}
+            onClick={() => setCurrentScreen('admin')}
+          />
         )}
       </footer>
     </div>
   );
 };
+
+const NavButton: React.FC<{
+  icon: React.ReactNode;
+  label: string;
+  active: boolean;
+  activeColor?: string;
+  onClick: () => void;
+}> = ({ icon, label, active, activeColor, onClick }) => (
+  <button
+    onClick={onClick}
+    className={`flex flex-col items-center gap-0.5 p-1 rounded-xl transition-colors ${
+      active ? (activeColor || 'text-blue-600') : 'text-slate-400'
+    }`}
+  >
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      {icon}
+    </svg>
+    <span className="text-[9px] font-bold">{label}</span>
+  </button>
+);
 
 export default App;
