@@ -1,6 +1,49 @@
 import React from 'react';
 import { ChatMessage } from '../../types';
 
+// Clean LaTeX, markdown artifacts and other formatting noise from AI responses
+function cleanDisplayText(text: string): string {
+  return text
+    // Remove LaTeX display math: $$...$$
+    .replace(/\$\$([\s\S]*?)\$\$/g, '$1')
+    // Remove LaTeX inline math: $...$
+    .replace(/\$([^$]+?)\$/g, '$1')
+    // Remove \frac{a}{b} → a/b
+    .replace(/\\frac\{([^}]*)\}\{([^}]*)\}/g, '$1/$2')
+    // Remove \cdot → ·
+    .replace(/\\cdot/g, '·')
+    // Remove \times → ×
+    .replace(/\\times/g, '×')
+    // Remove \sqrt{x} → √x
+    .replace(/\\sqrt\{([^}]*)\}/g, '√$1')
+    // Remove \left and \right
+    .replace(/\\left/g, '')
+    .replace(/\\right/g, '')
+    // Remove remaining backslash commands like \text{}, \mathrm{}, etc.
+    .replace(/\\(?:text|mathrm|mathbf|mathit|textbf)\{([^}]*)\}/g, '$1')
+    // Remove \pm → ±
+    .replace(/\\pm/g, '±')
+    // Remove \geq → ≥, \leq → ≤, \neq → ≠
+    .replace(/\\geq/g, '≥')
+    .replace(/\\leq/g, '≤')
+    .replace(/\\neq/g, '≠')
+    // Remove \infty → ∞
+    .replace(/\\infty/g, '∞')
+    // Remove \pi → π
+    .replace(/\\pi/g, 'π')
+    // Remove remaining single backslash before letters (e.g. \alpha → alpha)
+    .replace(/\\([a-zA-Z]+)/g, '$1')
+    // Remove ** bold markers
+    .replace(/\*\*(.*?)\*\*/g, '$1')
+    // Remove * italic markers  
+    .replace(/\*(.*?)\*/g, '$1')
+    // Remove stray $ signs
+    .replace(/\$/g, '')
+    // Clean up extra whitespace
+    .replace(/  +/g, ' ')
+    .trim();
+}
+
 interface Props {
   messages: ChatMessage[];
   isTyping: boolean;
@@ -18,7 +61,7 @@ const ChatMessages: React.FC<Props> = ({ messages, isTyping, error, isPreschool,
             ? 'bg-blue-600 text-white rounded-tr-none'
             : 'bg-white border border-slate-100 text-slate-800 rounded-tl-none'
         }`}>
-          <p className="text-sm whitespace-pre-wrap">{m.text}</p>
+          <p className="text-sm whitespace-pre-wrap">{m.role === 'model' ? cleanDisplayText(m.text) : m.text}</p>
           <div className="flex items-center justify-between mt-1 gap-2">
             <span className="text-[10px] opacity-50">
               {new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
