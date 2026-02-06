@@ -44,7 +44,7 @@ export function useAuth() {
   };
 
   useEffect(() => {
-    // Set up listener FIRST
+    // Set up listener FIRST — handles hash tokens from email confirmation links
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         setSession(session);
@@ -60,26 +60,23 @@ export function useAuth() {
           setIsAdmin(false);
         }
 
+        // INITIAL_SESSION fires after hash tokens are processed,
+        // so this is the only safe place to set loading = false.
         if (event === 'INITIAL_SESSION') {
           setLoading(false);
         }
       }
     );
 
-    // THEN check existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-
-      if (session?.user) {
-        fetchProfile(session.user.id);
-        fetchAdminRole(session.user.id);
-      }
-
+    // Safety timeout — in case INITIAL_SESSION never fires (shouldn't happen, but just in case)
+    const timeout = setTimeout(() => {
       setLoading(false);
-    });
+    }, 5000);
 
-    return () => subscription.unsubscribe();
+    return () => {
+      subscription.unsubscribe();
+      clearTimeout(timeout);
+    };
   }, []);
 
   const signOut = async () => {
