@@ -290,7 +290,27 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      safe_app_settings: {
+        Row: {
+          id: string | null
+          key: string | null
+          updated_at: string | null
+          value: Json | null
+        }
+        Insert: {
+          id?: string | null
+          key?: string | null
+          updated_at?: string | null
+          value?: Json | null
+        }
+        Update: {
+          id?: string | null
+          key?: string | null
+          updated_at?: string | null
+          value?: Json | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       has_role: {
