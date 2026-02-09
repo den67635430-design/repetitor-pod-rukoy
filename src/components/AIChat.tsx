@@ -171,8 +171,8 @@ const AIChat: React.FC<Props> = ({ user, subject, mode, onBack }) => {
       },
       onDone: () => {
         setIsTyping(false);
-        // Auto-speak AI responses for all users
-        if (currentAiResponse) {
+        // Auto-speak only for preschoolers
+        if (isPreschool && currentAiResponse) {
           speak(currentAiResponse);
         }
         if (sessionId && currentAiResponse) {
