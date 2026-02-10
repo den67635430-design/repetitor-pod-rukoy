@@ -28,7 +28,7 @@ const AIChat: React.FC<Props> = ({ user, subject, mode, onBack }) => {
   const [attachedImage, setAttachedImage] = useState<{ file: File; preview: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [greetingSent, setGreetingSent] = useState(false);
-
+  const [voicePreference, setVoicePreference] = useState<string>('female');
   const scrollRef = useRef<HTMLDivElement>(null);
   const isPreschool = user.type === 'PRESCHOOLER';
   const { speak, stop: stopSpeaking, isSpeaking } = useSpeechSynthesis();
@@ -51,6 +51,21 @@ const AIChat: React.FC<Props> = ({ user, subject, mode, onBack }) => {
       setInput(transcript);
     }
   }, [transcript]);
+
+  // Fetch voice preference
+  useEffect(() => {
+    const fetchVoice = async () => {
+      const { data } = await supabase
+        .from('profiles')
+        .select('voice_preference')
+        .eq('user_id', user.id)
+        .maybeSingle() as { data: { voice_preference: string } | null };
+      if (data?.voice_preference) {
+        setVoicePreference(data.voice_preference);
+      }
+    };
+    fetchVoice();
+  }, [user.id]);
 
   // Send greeting on mount (no mode selector)
   useEffect(() => {
@@ -173,7 +188,7 @@ const AIChat: React.FC<Props> = ({ user, subject, mode, onBack }) => {
         setIsTyping(false);
         // Auto-speak only for preschoolers
         if (isPreschool && currentAiResponse) {
-          speak(currentAiResponse);
+          speak(currentAiResponse, voicePreference);
         }
         if (sessionId && currentAiResponse) {
           const aiMsg: ChatMessage = { role: 'model', text: currentAiResponse, timestamp: new Date().toISOString() };
@@ -203,7 +218,7 @@ const AIChat: React.FC<Props> = ({ user, subject, mode, onBack }) => {
     if (isSpeaking) {
       stopSpeaking();
     } else {
-      speak(text);
+      speak(text, voicePreference);
     }
   };
 

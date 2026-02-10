@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { UserProfile, SubscriptionInfo, SubscriptionStatus, UserType } from '../types';
 import { supabase } from '@/integrations/supabase/client';
 import ChangePassword from './profile/ChangePassword';
@@ -18,6 +18,32 @@ const Profile: React.FC<Props> = ({ user, sub, onBack, onLogout, onUpdateProfile
   const [selectedType, setSelectedType] = useState(user.type);
   const [classLevel, setClassLevel] = useState(user.classLevel ?? 1);
   const [saving, setSaving] = useState(false);
+  const [voicePreference, setVoicePreference] = useState<string>('female');
+  const [voiceSaving, setVoiceSaving] = useState(false);
+
+  useEffect(() => {
+    const fetchVoice = async () => {
+      const { data } = await supabase
+        .from('profiles')
+        .select('voice_preference')
+        .eq('user_id', user.id)
+        .maybeSingle() as { data: { voice_preference: string } | null };
+      if (data?.voice_preference) {
+        setVoicePreference(data.voice_preference);
+      }
+    };
+    fetchVoice();
+  }, [user.id]);
+
+  const handleSaveVoice = async (voice: string) => {
+    setVoicePreference(voice);
+    setVoiceSaving(true);
+    await supabase
+      .from('profiles')
+      .update({ voice_preference: voice } as any)
+      .eq('user_id', user.id);
+    setVoiceSaving(false);
+  };
 
   const handleSaveType = async () => {
     setSaving(true);
@@ -141,6 +167,39 @@ const Profile: React.FC<Props> = ({ user, sub, onBack, onLogout, onUpdateProfile
             </button>
           </div>
         )}
+      </section>
+
+      {/* Voice Selection */}
+      <section className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
+        <div className="p-4">
+          <div className="flex items-center gap-3 mb-3">
+            <span className="text-xl">🔊</span>
+            <span className="text-sm font-bold text-slate-800">Голос озвучки</span>
+            {voiceSaving && <span className="text-[10px] text-blue-500 animate-pulse">Сохраняю...</span>}
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              onClick={() => handleSaveVoice('female')}
+              className={`py-3 px-4 rounded-xl border text-sm font-medium transition-all ${
+                voicePreference === 'female'
+                  ? 'bg-blue-600 text-white border-blue-600'
+                  : 'bg-white text-slate-600 border-slate-200'
+              }`}
+            >
+              👩 Женский
+            </button>
+            <button
+              onClick={() => handleSaveVoice('male')}
+              className={`py-3 px-4 rounded-xl border text-sm font-medium transition-all ${
+                voicePreference === 'male'
+                  ? 'bg-blue-600 text-white border-blue-600'
+                  : 'bg-white text-slate-600 border-slate-200'
+              }`}
+            >
+              👨 Мужской
+            </button>
+          </div>
+        </div>
       </section>
 
       {/* Info */}

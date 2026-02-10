@@ -38,7 +38,7 @@ serve(async (req) => {
       );
     }
 
-    const { text } = await req.json();
+    const { text, voiceId: requestedVoiceId } = await req.json();
     const ELEVENLABS_API_KEY = Deno.env.get("ELEVENLABS_API_KEY_1") || Deno.env.get("ELEVENLABS_API_KEY");
 
     if (!ELEVENLABS_API_KEY) {
@@ -59,8 +59,13 @@ serve(async (req) => {
     const cleanText = text.trim().substring(0, 5000);
     console.log("ElevenLabs TTS request:", cleanText.substring(0, 60));
 
-    // Using "Alice" voice - warm, gentle, natural female voice for Russian
-    const voiceId = "Xb7hH8MSUJpSbSDYk0k2";
+    // Voice IDs:
+    // Female "Alice" - warm, gentle: Xb7hH8MSUJpSbSDYk0k2
+    // Male "Daniel" - calm, clear: onwK4e9ZLuTAKqWW03F9
+    const FEMALE_VOICE = "Xb7hH8MSUJpSbSDYk0k2";
+    const MALE_VOICE = "onwK4e9ZLuTAKqWW03F9";
+    
+    const voiceId = requestedVoiceId === "male" ? MALE_VOICE : FEMALE_VOICE;
 
     const response = await fetch(
       `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}?output_format=mp3_44100_128`,

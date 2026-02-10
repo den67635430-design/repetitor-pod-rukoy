@@ -30,12 +30,12 @@ function cleanDisplayText(text: string): string {
 
 type Segment = 
   | { type: 'text'; content: string }
-  | { type: 'write'; character: string }
+  | { type: 'write'; character: string; cursive?: boolean }
   | { type: 'math'; expression: string };
 
 function parseVisualContent(text: string): Segment[] {
   const segments: Segment[] = [];
-  const regex = /\[WRITE:(.+?)\]|\[MATH:(.+?)\]/g;
+  const regex = /\[WRITE_CURSIVE:(.+?)\]|\[WRITE:(.+?)\]|\[MATH:(.+?)\]/g;
   let lastIndex = 0;
   let match;
 
@@ -48,9 +48,11 @@ function parseVisualContent(text: string): Segment[] {
     }
 
     if (match[1]) {
-      segments.push({ type: 'write', character: match[1] });
+      segments.push({ type: 'write', character: match[1], cursive: true });
     } else if (match[2]) {
-      segments.push({ type: 'math', expression: match[2] });
+      segments.push({ type: 'write', character: match[2] });
+    } else if (match[3]) {
+      segments.push({ type: 'math', expression: match[3] });
     }
 
     lastIndex = match.index + match[0].length;
@@ -74,7 +76,7 @@ function RichContent({ text }: { text: string }) {
       {segments.map((seg, i) => {
         switch (seg.type) {
           case 'write':
-            return <WritingAnimation key={i} character={seg.character} />;
+            return <WritingAnimation key={i} character={seg.character} cursive={seg.cursive} />;
           case 'math':
             return <MathVisualization key={i} expression={seg.expression} />;
           case 'text':

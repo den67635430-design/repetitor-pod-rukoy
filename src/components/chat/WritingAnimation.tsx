@@ -1,15 +1,17 @@
 import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import { getCharacterStrokes } from './letterStrokes';
+import { getCursiveStrokes } from './cursiveStrokes';
 
 interface Props {
   character: string;
+  cursive?: boolean;
 }
 
 const STROKE_DURATION = 900; // ms per stroke
 const STROKE_GAP = 200;     // pause between strokes
 const START_DELAY = 350;     // delay before animation starts
 
-const WritingAnimation: React.FC<Props> = ({ character }) => {
+const WritingAnimation: React.FC<Props> = ({ character, cursive = false }) => {
   const svgRef = useRef<SVGSVGElement>(null);
   const animRef = useRef<number>(0);
   const startRef = useRef<number>(0);
@@ -18,7 +20,12 @@ const WritingAnimation: React.FC<Props> = ({ character }) => {
   const [progress, setProgress] = useState(-1);
   const [measured, setMeasured] = useState(false);
 
-  const strokes = useMemo(() => getCharacterStrokes(character), [character]);
+  const strokes = useMemo(() => {
+    if (cursive) {
+      return getCursiveStrokes(character) ?? getCharacterStrokes(character);
+    }
+    return getCharacterStrokes(character);
+  }, [character, cursive]);
 
   const totalDuration = strokes
     ? strokes.length * STROKE_DURATION + Math.max(0, strokes.length - 1) * STROKE_GAP
@@ -166,7 +173,7 @@ const WritingAnimation: React.FC<Props> = ({ character }) => {
         </div>
 
         <span className="mt-2 text-xs text-slate-500 font-medium">
-          ✏️ Пишем: «{character}»
+          ✏️ Пишем{cursive ? ' (прописная)' : ''}: «{character}»
         </span>
       </div>
     );

@@ -2,7 +2,7 @@ import { useCallback, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
 interface UseSpeechSynthesisReturn {
-  speak: (text: string) => void;
+  speak: (text: string, voiceId?: string) => void;
   stop: () => void;
   isSpeaking: boolean;
   isSupported: boolean;
@@ -10,6 +10,7 @@ interface UseSpeechSynthesisReturn {
 
 function cleanTextForSpeech(text: string): string {
   return text
+    .replace(/\[WRITE_CURSIVE:[^\]]+\]/g, '')
     .replace(/\[WRITE:[^\]]+\]/g, '')
     .replace(/\[MATH:[^\]]+\]/g, '')
     .replace(/\[ESCALATE:[^\]]+\]/g, '')
@@ -42,7 +43,7 @@ export function useSpeechSynthesis(): UseSpeechSynthesisReturn {
     setIsSpeaking(false);
   }, []);
 
-  const speak = useCallback(async (text: string) => {
+  const speak = useCallback(async (text: string, voiceId?: string) => {
     // Stop any current speech
     stop();
 
@@ -72,7 +73,7 @@ export function useSpeechSynthesis(): UseSpeechSynthesisReturn {
             apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
             Authorization: `Bearer ${session.access_token}`,
           },
-          body: JSON.stringify({ text: cleanText }),
+          body: JSON.stringify({ text: cleanText, voiceId: voiceId || 'female' }),
           signal: abortController.signal,
         }
       );
