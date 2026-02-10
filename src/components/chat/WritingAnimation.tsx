@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import { getCharacterStrokes } from './letterStrokes';
+import { getCursiveStrokes } from './cursiveStrokes';
 
 interface Props {
   character: string;
@@ -19,9 +20,9 @@ const WritingAnimation: React.FC<Props> = ({ character, cursive = false }) => {
   const [progress, setProgress] = useState(-1);
   const [measured, setMeasured] = useState(false);
 
-  // For cursive mode, always use font-based rendering (no SVG strokes needed)
+  // Use cursive SVG paths for cursive mode, block letter paths otherwise
   const strokes = useMemo(() => {
-    if (cursive) return null; // Force font-based cursive rendering
+    if (cursive) return getCursiveStrokes(character);
     return getCharacterStrokes(character);
   }, [character, cursive]);
 
@@ -126,21 +127,23 @@ const WritingAnimation: React.FC<Props> = ({ character, cursive = false }) => {
           {/* Notebook ruled lines */}
           <NotebookLines />
 
-          {/* Dashed guide outline */}
-          <svg viewBox="0 0 100 100" className="absolute" style={svgStyle}>
-            {strokes.map((d, i) => (
-              <path
-                key={`guide-${i}`}
-                d={d}
-                fill="none"
-                stroke="#d1d5db"
-                strokeWidth="1.2"
-                strokeDasharray="3 4"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            ))}
-          </svg>
+          {/* Dashed guide outline — only for block letters, not cursive */}
+          {!cursive && (
+            <svg viewBox="0 0 100 100" className="absolute" style={svgStyle}>
+              {strokes.map((d, i) => (
+                <path
+                  key={`guide-${i}`}
+                  d={d}
+                  fill="none"
+                  stroke="#d1d5db"
+                  strokeWidth="1.2"
+                  strokeDasharray="3 4"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              ))}
+            </svg>
+          )}
 
           {/* Animated ink strokes */}
           <svg ref={svgRef} viewBox="0 0 100 100" className="absolute" style={svgStyle}>
@@ -153,8 +156,8 @@ const WritingAnimation: React.FC<Props> = ({ character, cursive = false }) => {
                   data-stroke={i}
                   d={d}
                   fill="none"
-                  stroke="#1e40af"
-                  strokeWidth="2.4"
+                  stroke={cursive ? "#1a3a8a" : "#1e40af"}
+                  strokeWidth={cursive ? "1.4" : "2.4"}
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   strokeDasharray={len}
