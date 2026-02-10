@@ -21,6 +21,18 @@ function cleanTextForSpeech(text: string): string {
     .replace(/#{1,6}\s/g, '')
     .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
     .replace(/[-•]\s/g, '')
+    // Replace math symbols with Russian words for natural speech
+    .replace(/=/g, ' равно ')
+    .replace(/\+/g, ' плюс ')
+    .replace(/−/g, ' минус ')
+    .replace(/-(?=\s*\d)/g, ' минус ')
+    .replace(/×/g, ' умножить на ')
+    .replace(/÷/g, ' разделить на ')
+    .replace(/>/g, ' больше ')
+    .replace(/</g, ' меньше ')
+    .replace(/≥/g, ' больше или равно ')
+    .replace(/≤/g, ' меньше или равно ')
+    .replace(/≠/g, ' не равно ')
     .replace(/\s+/g, ' ')
     .trim();
 }
