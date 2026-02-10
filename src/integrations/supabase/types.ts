@@ -201,6 +201,7 @@ export type Database = {
           user_id: string
           user_type: string
           username: string | null
+          voice_preference: string
         }
         Insert: {
           class_level?: number | null
@@ -216,6 +217,7 @@ export type Database = {
           user_id: string
           user_type?: string
           username?: string | null
+          voice_preference?: string
         }
         Update: {
           class_level?: number | null
@@ -231,6 +233,7 @@ export type Database = {
           user_id?: string
           user_type?: string
           username?: string | null
+          voice_preference?: string
         }
         Relationships: []
       }
