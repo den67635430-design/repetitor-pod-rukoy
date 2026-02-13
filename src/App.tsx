@@ -14,7 +14,7 @@ import AdminDashboard from './components/AdminDashboard';
 import Profile from './components/Profile';
 import PricingPage from './components/PricingPage';
 
-type Screen = 'welcome' | 'auth' | 'setup' | 'home' | 'subjects' | 'preschool' | 'chat' | 'game' | 'admin' | 'profile' | 'exams' | 'pricing';
+type Screen = 'welcome' | 'auth' | 'setup' | 'home' | 'subjects' | 'preschool' | 'chat' | 'game' | 'admin' | 'profile' | 'exams' | 'pricing' | 'vpr' | 'oge' | 'ege';
 
 const App: React.FC = () => {
   const { user, profile, isAdmin, loading, signOut, hasProfile, refreshProfile } = useAuth();
@@ -157,10 +157,27 @@ const App: React.FC = () => {
             onSelect={(id) => { setSelectedSubject(id); setCurrentScreen('chat'); }}
           />
         );
-      case 'exams':
+      case 'vpr':
         return (
           <SubjectGrid
-            isExam
+            examType="vpr"
+            classLevel={profile.class_level ?? 4}
+            onBack={() => setCurrentScreen('home')}
+            onSelect={(id) => { setSelectedSubject(id); setCurrentScreen('chat'); }}
+          />
+        );
+      case 'oge':
+        return (
+          <SubjectGrid
+            examType="oge"
+            onBack={() => setCurrentScreen('home')}
+            onSelect={(id) => { setSelectedSubject(id); setCurrentScreen('chat'); }}
+          />
+        );
+      case 'ege':
+        return (
+          <SubjectGrid
+            examType="ege"
             onBack={() => setCurrentScreen('home')}
             onSelect={(id) => { setSelectedSubject(id); setCurrentScreen('chat'); }}
           />

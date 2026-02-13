@@ -1,17 +1,37 @@
 
 import React from 'react';
-import { SUBJECTS, EXAMS, PRESCHOOL_SECTIONS } from '../constants';
+import { SUBJECTS, PRESCHOOL_SECTIONS, VPR_SUBJECTS, OGE_SUBJECTS, EGE_SUBJECTS } from '../constants';
 
 interface Props {
   isExam?: boolean;
   isPreschool?: boolean;
+  examType?: 'vpr' | 'oge' | 'ege';
+  classLevel?: number;
   onBack: () => void;
   onSelect: (id: string) => void;
 }
 
-const SubjectGrid: React.FC<Props> = ({ isExam, isPreschool, onBack, onSelect }) => {
-  const items = isPreschool ? PRESCHOOL_SECTIONS : isExam ? EXAMS : SUBJECTS;
-  const title = isPreschool ? 'Программа дошкольника' : isExam ? 'Подготовка к экзаменам' : 'Выберите предмет';
+const SubjectGrid: React.FC<Props> = ({ isExam, isPreschool, examType, classLevel, onBack, onSelect }) => {
+  let items: { id: string; name: string; emoji: string }[];
+  let title: string;
+
+  if (isPreschool) {
+    items = PRESCHOOL_SECTIONS;
+    title = 'Программа дошкольника';
+  } else if (examType === 'vpr') {
+    const level = classLevel || 4;
+    items = VPR_SUBJECTS[level] || VPR_SUBJECTS[4];
+    title = `ВПР — ${level} класс`;
+  } else if (examType === 'oge') {
+    items = OGE_SUBJECTS;
+    title = 'ОГЭ — Выберите предмет';
+  } else if (examType === 'ege') {
+    items = EGE_SUBJECTS;
+    title = 'ЕГЭ — Выберите предмет';
+  } else {
+    items = SUBJECTS;
+    title = 'Выберите предмет';
+  }
 
   return (
     <div className="p-5 animate-slide-in space-y-6">
@@ -26,7 +46,12 @@ const SubjectGrid: React.FC<Props> = ({ isExam, isPreschool, onBack, onSelect })
         {items.map((item) => (
           <button
             key={item.id}
-            onClick={() => onSelect(item.name)}
+            onClick={() => {
+              const prefix = examType === 'vpr' ? `ВПР ${classLevel} класс: ` :
+                             examType === 'oge' ? 'ОГЭ: ' :
+                             examType === 'ege' ? 'ЕГЭ: ' : '';
+              onSelect(`${prefix}${item.name}`);
+            }}
             className="bg-white border border-slate-100 p-6 rounded-3xl shadow-sm hover:shadow-md active:scale-95 transition-all flex flex-col items-center gap-3 group"
           >
             <span className="text-4xl group-hover:scale-110 transition-transform">{item.emoji}</span>

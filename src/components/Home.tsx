@@ -74,29 +74,26 @@ const Home: React.FC<Props> = ({ user, sub, testMode, isAdmin, onNavigate, onSel
         <MenuButton 
           title="Подготовка к ОГЭ" 
           emoji="📝" 
-          onClick={() => onNavigate('exams')} 
+          onClick={() => onNavigate('oge')} 
           color="bg-amber-50 text-amber-700 border-amber-100"
         />
         <MenuButton 
           title="Подготовка к ЕГЭ" 
           emoji="🎓" 
-          onClick={() => onNavigate('exams')} 
+          onClick={() => onNavigate('ege')} 
           color="bg-rose-50 text-rose-700 border-rose-100"
+        />
+        <MenuButton 
+          title="Подготовка к ВПР" 
+          emoji="📋" 
+          onClick={() => onNavigate('vpr')} 
+          color="bg-teal-50 text-teal-700 border-teal-100"
         />
         <MenuButton 
           title="Дошкольники" 
           emoji="👶" 
           onClick={() => onNavigate('preschool')} 
           color="bg-sky-50 text-sky-700 border-sky-100"
-        />
-        <MenuButton 
-          title="ВПР" 
-          emoji="📋" 
-          onClick={() => {
-            onSelectSubject('ВПР (Всероссийские проверочные работы)');
-            onNavigate('chat');
-          }} 
-          color="bg-teal-50 text-teal-700 border-teal-100"
         />
         <MenuButton 
           title="Игра-тренажёр" 
