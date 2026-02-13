@@ -208,7 +208,15 @@ function getSystemInstruction(
     Отвечай ТОЛЬКО на русском языке.`;
   }
 
-  if (userType === "PRESCHOOLER") {
+  // Exam-specific instructions (VPR, OGE, EGE) — check BEFORE userType so exam context always wins
+  let examInstruction = "";
+  const subjectLower = subject.toLowerCase();
+  const isExamSubject = subjectLower.includes('впр') || subjectLower.includes('vpr') ||
+                        subjectLower.includes('огэ') || subjectLower.includes('oge') ||
+                        subjectLower.includes('егэ') || subjectLower.includes('ege');
+
+  // If NOT an exam subject and user is PRESCHOOLER, use preschool prompt
+  if (!isExamSubject && userType === "PRESCHOOLER") {
     return `Ты — дружелюбный AI-репетитор для дошкольника (3-6 лет).
     Тон: очень добрый, поддерживающий, частая похвала. Обращайся на "ты".
     Стиль: короткие фразы, простые слова, игровые элементы, эмодзи.
@@ -240,10 +248,6 @@ function getSystemInstruction(
     Связывай материал с экзаменами (ОГЭ/ЕГЭ) и реальной жизнью.
     Поощряй критическое мышление и аналитический подход.`;
   }
-
-  // Exam-specific instructions (VPR, OGE, EGE)
-  let examInstruction = "";
-  const subjectLower = subject.toLowerCase();
   
   if (subjectLower.includes('впр') || subjectLower.includes('vpr')) {
     // Extract class level from subject like "ВПР 4 класс: Математика"
